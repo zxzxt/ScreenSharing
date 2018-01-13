@@ -17,6 +17,8 @@ import java.net.Socket;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.util.zip.DataFormatException;
+import java.util.zip.Deflater;
+import java.util.zip.Inflater;
 
 import javax.imageio.ImageIO;
 import javax.swing.ImageIcon;
@@ -74,7 +76,10 @@ public class ClientShare implements Runnable {
 					/* JPG to Byte */
 					byte[] imageInByte = baos.toByteArray();
 					buf = imageInByte;
+					System.out.println("[clientShare]Screen byte size : " + baos.size());
 					baos.close();
+					/* Compress */
+					buf = compressBytes(buf);
 					DatagramPacket send_dp = new DatagramPacket(buf, buf.length, InetAddress.getByName(ip_address), send_port);
 					send_ds.send(send_dp);
 					System.out.println("[clientShare]Send Screen Sharing Data.");
@@ -89,7 +94,8 @@ public class ClientShare implements Runnable {
 				System.out.println("[ClientShare]Received shared screen");
 				byte[] imageInByte = new byte[(int) DATAGRAM_MAX_SIZE];
 				imageInByte = recv_dp.getData();
-				
+				System.out.println("[clientShare]Screen byte size recv : " + recv_dp.getLength());
+				imageInByte = extractBytes(imageInByte); 	//Extract
 				InputStream in = new ByteArrayInputStream(imageInByte);
 				BufferedImage screen = ImageIO.read(in);
 				if(screen==null) {
@@ -104,7 +110,9 @@ public class ClientShare implements Runnable {
 				
 			} catch(IOException e) {
 				e.printStackTrace();
-			} 
+			} catch(DataFormatException e) {
+				e.printStackTrace();
+			}
 		}//while
 		clntGUI.lb_screen.setIcon(null);
 		clntGUI.lb_screen.setText("공유 없음");
@@ -114,5 +122,47 @@ public class ClientShare implements Runnable {
 		System.out.println("[clientShare.java]Stop clientShare Thread.");
 	}//run
 	
+	public byte[] compressBytes(byte[] data) throws IOException {
+		byte[] input = data;  
+	    Deflater df = new Deflater();   //Generates the byte code
+        
+        df.setLevel(9);
+        df.setInput(input);
+	 
+	    ByteArrayOutputStream baos = new ByteArrayOutputStream(input.length); 
+	    df.finish();
+	    byte[] buff = new byte[(int) DATAGRAM_MAX_SIZE];   
+	    
+	    while(!df.finished()) {
+	        int count = df.deflate(buff);       //Returns the generated code
+	        baos.write(buff, 0, count);     
+	    }
+	    
+        baos.close();
+        byte[] output = baos.toByteArray();
+        System.out.println("Original: "+input.length);
+	    System.out.println("Compressed: "+output.length);
+	    
+	    return output;
+    }//compressBytes
+	
+	public byte[] extractBytes(byte[] input) throws IOException, DataFormatException {
+		Inflater ifl = new Inflater();   //Extraction
+		ifl.setInput(input);
+	 
+        ByteArrayOutputStream baos = new ByteArrayOutputStream(input.length);
+        byte[] buff = new byte[(int) DATAGRAM_MAX_SIZE];
+        
+        while(!ifl.finished()) {
+            int count = ifl.inflate(buff);
+            baos.write(buff, 0, count);
+        }
+        baos.close();
+        byte[] output = baos.toByteArray();
+ 
+        System.out.println("Original: "+input.length);
+        System.out.println("Extracted: "+output.length);
+        return output;
+	 }
 	
 }//class

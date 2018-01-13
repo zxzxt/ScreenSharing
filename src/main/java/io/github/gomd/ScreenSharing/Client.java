@@ -36,10 +36,15 @@ public class Client implements Runnable {
 		new Thread(clntGUI).start();
 		
 		if(getConnIP()) {
-			if(connServer())
-				clntGUI.frame.setVisible(true);
-			else
-				clntGUI.alertClient("입력하신 " + ip_address + "서버가 없습니다.");		
+			if(ip_address.equals("127.0.0.1")) {    //InetAddress.getLocalHost().getHostAddress()
+				clntGUI.alertClient("자기 자신은 접속 할 수 없습니다.");
+			}
+			else {
+				if(connServer())
+					clntGUI.frame.setVisible(true);
+				else
+					clntGUI.alertClient("입력하신 " + ip_address + "서버가 없습니다.");		
+			}
 		}
 	}//Constructor
 	
@@ -101,7 +106,7 @@ public class Client implements Runnable {
 					msg = str_recv.readLine();
 					
 					if(msg.equals("ack")) {
-						System.out.println("[Client]Thumb Successfully");
+						//System.out.println("[Client]Thumb Successfully");
 					}
 					else {
 						System.err.println("[Client]Thumb Fail");
